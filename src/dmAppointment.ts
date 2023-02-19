@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { MachineConfig, send, Action, assign } from "xstate";
 
 function say(text: string): Action<SDSContext, SDSEvent> {
