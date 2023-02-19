@@ -17,11 +17,11 @@ interface Grammar {
 const grammar: Grammar = {
   "create a meeting": {
     intent: "None",
-    entities: { event: "meeting" },
+    entities: { occassion: "meeting" },
   },
-  "who is banksy": {
+  "ask about someone": {
     intent: "None",
-    entities: { question: "banksy" },
+    entities: { answer: "ask about someone" },
   },
   lecture: {
     intent: "None",
@@ -176,16 +176,16 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
         RECOGNISED: [
           {
             target: "meet",
-            cond: (context) => !!getEntity(context, "event"),
+            cond: (context) => !!getEntity(context, "occassion"),
             actions: assign({
-              event: (context) => getEntity(context, "event"),
+              occassion: (context) => getEntity(context, "occassion"),
             }),
           },
           {
 			  target: "asking",
-			  cond: (context) => !!getEntity(context, "question"),
+			  cond: (context) => !!getEntity(context, "answer"),
             actions: assign({
-              question: (context) => getEntity(context, "question"),
+              answer: (context) => getEntity(context, "answer"),
             }),
           },
           {
@@ -211,20 +211,82 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
       },
     },
     meet: {
+      entry: say("Okay"),
+      on: { ENDSPEECH: "welcome" },
+      },
+    asking: {
       entry: send((context) => ({
         type: "SPEAK",
         value: `OK`,
       })),
-      on: { ENDSPEECH: "welcome" },
-    },
-    asking: {
-      entry: send((context) => ({
-        type: "SPEAK",
-        value: `Here is what I found. ${context.question} is an artist`,
-      })),
-      on: { ENDSPEECH: "celebrityQuestion" },
+      on: { ENDSPEECH: "WhoIsX" },
+      },
+    WhoIsX: {
+      initial: "prompt",
+      on: {
+        RECOGNISED: [
+          { target: ".info",
+            actions: assign({person:  
+              context => {return context.recResult[0].utterance}
+            })
+              
+            },
+          {
+            target: ".nomatch",
+          },
+        ],
+        TIMEOUT: ".prompt",
+      },
+      states: {
+        info: {
+          invoke: {
+            id: 'getInfo',
+            src: (context, event) => kbRequest(context.person),
+            onDone: [{
+              target: 'success',
+              cond: (context, event) => event.data.Abstract !== "",
+              actions: assign({ info: (context, event) => event.data })
+            },
+            {
+              target: 'failure',
+            },
+          ],
+            onError: {
+              target: 'failure',
+            }
+          }
+        },
+        success: {
+          entry: send((context) => ({
+            type: "SPEAK",
+            value: `Here is what I found. ${context.info.Abstract}`
+          })),
+          on: {ENDSPEECH: "#celebrityQuestion"}
+        },
+        failure: {
+          entry: send((context) => ({
+            type: "SPEAK",
+            value: `Sorry, couln't find anything about them. Try again`
+          })),
+          on: {ENDSPEECH: "prompt"}
+        },
+        prompt: {
+          entry: say("Who would you like to know about?"),
+          on: { ENDSPEECH: "ask" },
+        },
+        ask: {
+          entry: send("LISTEN"),
+        },
+        nomatch: {
+          entry: say(
+            "Sorry, could you repeat?"
+          ),
+          on: { ENDSPEECH: "ask" },
+        },
+      },
     },
     celebrityQuestion: {
+		id: "celebrityQuestion",
     initial: "prompt",
       on: {
         RECOGNISED: [
@@ -480,7 +542,7 @@ wholeday: {
         prompt: {
 			entry: send((context) => ({
             type: "SPEAK",
-            value: `Do you want me to create a meeting titled ${context.type}, on ${context.dayInfo} at ${context.timeInfo}?`,
+            value: `Do you want me to create a meeting on ${context.dayInfo} at ${context.timeInfo}?`,
           })),
           on: { ENDSPEECH: "ask" },
         },
@@ -536,7 +598,7 @@ wholeday: {
         prompt: {
 			entry: send((context) => ({
             type: "SPEAK",
-            value: `Do you want me to create a meeting titled ${context.type}, on ${context.dayInfo} for the whole day?`,
+            value: `Do you want me to create a meeting on ${context.dayInfo} for the whole day?`,
           })),
           on: { ENDSPEECH: "ask" },
         },
@@ -573,222 +635,3 @@ const kbRequest = (text: string) =>
       `https://cors.eu.org/https://api.duckduckgo.com/?q=${text}&format=json&skip_disambig=1`
     )
   ).then((data) => data.json());
-||||||| 7edb337
-import { MachineConfig, send, Action, assign } from "xstate";
-
-function say(text: string): Action<SDSContext, SDSEvent> {
-  return send((_context: SDSContext) => ({ type: "SPEAK", value: text }));
-}
-
-interface Grammar {
-  [index: string]: {
-    intent: string;
-    entities: {
-      [index: string]: string;
-    };
-  };
-}
-
-const grammar: Grammar = {
-  lecture: {
-    intent: "None",
-    entities: { title: "Dialogue systems lecture" },
-  },
-  lunch: {
-    intent: "None",
-    entities: { title: "Lunch at the canteen" },
-  },
-  "on friday": {
-    intent: "None",
-    entities: { day: "Friday" },
-  },
-  "at ten": {
-    intent: "None",
-    entities: { time: "10:00" },
-  },
-};
-
-const getEntity = (context: SDSContext, entity: string) => {
-  // lowercase the utterance and remove tailing "."
-  let u = context.recResult[0].utterance.toLowerCase().replace(/\.$/g, "");
-  if (u in grammar) {
-    if (entity in grammar[u].entities) {
-      return grammar[u].entities[entity];
-    }
-  }
-  return false;
-};
-
-export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
-  initial: "idle",
-  states: {
-    idle: {
-      on: {
-        CLICK: "init",
-      },
-    },
-    init: {
-      on: {
-        TTS_READY: "welcome",
-        CLICK: "welcome",
-      },
-    },
-    welcome: {
-      initial: "prompt",
-      on: {
-        RECOGNISED: [
-          {
-            target: "info",
-            cond: (context) => !!getEntity(context, "title"),
-            actions: assign({
-              title: (context) => getEntity(context, "title"),
-            }),
-          },
-          {
-            target: ".nomatch",
-          },
-        ],
-        TIMEOUT: ".prompt",
-      },
-      states: {
-        prompt: {
-          entry: say("Let's create a meeting. What is it about?"),
-          on: { ENDSPEECH: "ask" },
-        },
-        ask: {
-          entry: send("LISTEN"),
-        },
-        nomatch: {
-          entry: say(
-            "Sorry, I don't know what it is. Tell me something I know."
-          ),
-          on: { ENDSPEECH: "ask" },
-        },
-      },
-    },
-    info: {
-      entry: send((context) => ({
-        type: "SPEAK",
-        value: `OK, ${context.title}`,
-      })),
-      on: { ENDSPEECH: "init" },
-    },
-  },
-};
-
-const kbRequest = (text: string) =>
-  fetch(
-    new Request(
-      `https://cors.eu.org/https://api.duckduckgo.com/?q=${text}&format=json&skip_disambig=1`
-    )
-  ).then((data) => data.json());
-=======
-import { MachineConfig, send, Action, assign } from "xstate";
-
-function say(text: string): Action<SDSContext, SDSEvent> {
-  return send((_context: SDSContext) => ({ type: "SPEAK", value: text }));
-}
-
-interface Grammar {
-  [index: string]: {
-    intent: string;
-    entities: {
-      [index: string]: string;
-    };
-  };
-}
-
-const grammar: Grammar = {
-  lecture: {
-    intent: "None",
-    entities: { title: "Dialogue systems lecture" },
-  },
-  lunch: {
-    intent: "None",
-    entities: { title: "Lunch at the canteen" },
-  },
-  "on friday": {
-    intent: "None",
-    entities: { day: "Friday" },
-  },
-  "at ten": {
-    intent: "None",
-    entities: { time: "10:00" },
-  },
-};
-
-const getEntity = (context: SDSContext, entity: string) => {
-  // lowercase the utterance and remove tailing "."
-  let u = context.recResult[0].utterance.toLowerCase().replace(/\.$/g, "");
-  if (u in grammar) {
-    if (entity in grammar[u].entities) {
-      return grammar[u].entities[entity];
-    }
-  }
-  return false;
-};
-
-export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
-  initial: "idle",
-  states: {
-    idle: {
-      on: {
-        CLICK: "init",
-      },
-    },
-    init: {
-      on: {
-        TTS_READY: "welcome",
-        CLICK: "welcome",
-      },
-    },
-    welcome: {
-      initial: "prompt",
-      on: {
-        RECOGNISED: [
-          {
-            target: "info",
-            cond: (context) => !!getEntity(context, "title"),
-            actions: assign({
-              title: (context) => getEntity(context, "title"),
-            }),
-          },
-          {
-            target: ".nomatch",
-          },
-        ],
-        TIMEOUT: ".prompt",
-      },
-      states: {
-        prompt: {
-          entry: say("Let's create a meeting. What is it about?"),
-          on: { ENDSPEECH: "ask" },
-        },
-        ask: {
-          entry: send("LISTEN"),
-        },
-        nomatch: {
-          entry: say(
-            "Sorry, I don't know what it is. Tell me something I know."
-          ),
-          on: { ENDSPEECH: "ask" },
-        },
-      },
-    },
-    info: {
-      entry: send((context) => ({
-        type: "SPEAK",
-        value: `OK, ${context.title}`,
-      })),
-      on: { ENDSPEECH: "init" },
-    },
-  },
-};
-
-const kbRequest = (text: string) =>
-  fetch(
-    new Request(
-      `https://cors.eu.org/https://api.duckduckgo.com/?q=${text}&format=json&skip_disambig=1`
-    )
-  ).then((data) => data.json());
->>>>>>> origin/azure-nlu
