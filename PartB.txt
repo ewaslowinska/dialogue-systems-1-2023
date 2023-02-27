@@ -1,0 +1,49 @@
+<!--ID=B7267351-473F-409D-9765-754A8EBCDE05;Version=1|{"VoiceNameToIdMapItems":[{"Id":"e5e4f59b-65c6-42b2-a6e3-5985d1a1ea07","Name":"Microsoft Server Speech Text to Speech Voice (en-US, JennyNeural)","ShortName":"en-US-JennyNeural","Locale":"en-US","VoiceType":"StandardVoice"}]}-->
+<!--ID=FCB40C2B-1F9F-4C26-B1A1-CF8E67BE07D1;Version=1|{"Files":{"9fe02bd5-73b6-4c1c-b601-c38b0f555f13":{"FileKind":"CustomLexiconFile","FileSubKind":"CustomLexiconFile","Uri":"https://cvoiceprodneu.blob.core.windows.net/acc-public-files/2f8d33a54fd94f84b6f5a2936367d2dd/9c1a35d5-255e-4bc8-8f7a-e87b618a5d4b.xml"}}}-->
+<!--ID=5B95B1CC-2C7B-494F-B746-CF22A0E779B7;Version=1|{"Locales":{"en-US":{"AutoApplyCustomLexiconFiles":[{"FileId":"9fe02bd5-73b6-4c1c-b601-c38b0f555f13"}]}}}-->
+<speak xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xmlns:emo="http://www.w3.org/2009/10/emotionml" version="1.0" xml:lang="en-US"><voice name="en-US-JennyNeural"><lexicon uri="https://cvoiceprodneu.blob.core.windows.net/acc-public-files/2f8d33a54fd94f84b6f5a2936367d2dd/9c1a35d5-255e-4bc8-8f7a-e87b618a5d4b.xml" />Hi! What would you like to do? Would you like to create a meeting or ask about someone?
+Sorry, I don't know what it is. Tell me something I know.
+Okay
+Here is what I found.
+Sorry, couldn't find anything about them. Try again
+Who would you like to know about?
+Sorry, could you repeat?
+Would you like to meet them?
+Let's create a meeting. What is it about?
+On which day is it?
+Will it take the whole day?
+What time is your meeting?
+Do you want me to create a meeting on ${context.dayInfo} at ${context.timeInfo}?
+OK, Your meeting has been created!
+Do you want me to create a meeting on ${context.dayInfo} for the whole day?
+Dialogue systems lecture
+Lunch at the canteen
+Tutoring
+Workshop
+Birthday
+Party
+Exhibition at the museum
+A football match
+Festival
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Saturday
+Sunday
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+Banksy is a pseudonymous England-based street artist, political activist and film director whose real name and identity remain unconfirmed and the subject of speculation. Active since the 1990s, his satirical street art and subversive epigrams combine dark humour with graffiti executed in a distinctive stenciling technique. His works of political and social commentary have appeared on streets, walls and bridges throughout the world. Banksy's work grew out of the Bristol underground scene, which involved collaborations between artists and musicians. Banksy says that he was inspired by 3D, a graffiti artist and founding member of the musical group Massive Attack.
+Mohandas Karamchand Gandhi, popularly known as Mahatma Gandhi, was an Indian revolutionary, anti-colonial nationalist, and political ethicist who employed nonviolent resistance to lead the successful campaign for India's independence from British rule and later inspire movements for civil rights and freedom across the world. The honorific epithet Mahātmā, first applied to him in 1914 in South Africa, is now used throughout the world.
+John Fitzgerald Kennedy, often referred to by his initials JFK, was an American politician who served as the 35th president of the United States from 1961 until his assassination in 1963. He was the youngest person to assume the presidency by election and the youngest president at the end of his tenure.</voice></speak>
