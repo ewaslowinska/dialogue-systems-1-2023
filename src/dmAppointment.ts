@@ -4,155 +4,20 @@ function say(text: string): Action<SDSContext, SDSEvent> {
   return send((_context: SDSContext) => ({ type: "SPEAK", value: text }));
 }
 
-interface Grammar {
-  [index: string]: {
-    intent: string;
-    entities: {
-      [index: string]: string;
-    };
-  };
-}
-
-const grammar: Grammar = {
-  "create a meeting": {
-    intent: "None",
-    entities: { occassion: "meeting" },
-  },
-  "ask about someone": {
-    intent: "None",
-    entities: { answer: "ask about someone" },
-  },
-  lecture: {
-    intent: "None",
-    entities: { type: "Dialogue systems lecture" },
-  },
-  lunch: {
-    intent: "None",
-    entities: { type: "Lunch at the canteen" },
-  },
-  tutoring: {
-    intent: "None",
-    entities: { type: "Tutoring" },
-  },
-  workshop: {
-    intent: "None",
-    entities: { type: "Workshop" },
-  },
-  birthday: {
-    intent: "None",
-    entities: { type: "Birthday" },
-  },
-  party: {
-    intent: "None",
-    entities: { type: "Party" },
-  },
-  exhibition: {
-    intent: "None",
-    entities: { type: "Exhibition at the museum" },
-  },
-  match: {
-    intent: "None",
-    entities: { type: "A football match" },
-  },
-  festival: {
-    intent: "None",
-    entities: { type: "Festival" },
-  },
-  "on monday": {
-    intent: "None",
-    entities: { dayInfo: "Monday" },
-  },
-  "on tuesday": {
-    intent: "None",
-    entities: { dayInfo: "Tuesday" },
-  },
-  "on wednesday": {
-    intent: "None",
-    entities: { dayInfo: "Wednesday" },
-  },
-  "on thursday": {
-    intent: "None",
-    entities: { dayInfo: "Thursday" },
-  },
-  "on friday": {
-    intent: "None",
-    entities: { dayInfo: "Friday" },
-  },
-  "on saturday": {
-    intent: "None",
-    entities: { dayInfo: "Saturday" },
-  },
-  "on sunday": {
-    intent: "None",
-    entities: { dayInfo: "Sunday" },
-  },
-  "yes": {
-	  intent: "None",
-	  entities: { confirmation: "yes" },
-  },
-  "no": {
-	  intent: "None",
-	  entities: { denial: "no" },
-  },
-  "1": {
-    intent: "None",
-    entities: { timeInfo: "1" },
-  },
-  "2": {
-    intent: "None",
-    entities: { timeInfo: "2" },
-  },
-  "3": {
-    intent: "None",
-    entities: { timeInfo: "3" },
-  },
-  "4": {
-    intent: "None",
-    entities: { timeInfo: "4" },
-  },
-  "5": {
-    intent: "None",
-    entities: { timeInfo: "5" },
-  },
-  "6": {
-    intent: "None",
-    entities: { timeInfo: "6" },
-  },
-  "7": {
-    intent: "None",
-    entities: { timeInfo: "7" },
-  },
-  "8": {
-    intent: "None",
-    entities: { timeInfo: "8" },
-  },
-  "9": {
-    intent: "None",
-    entities: { timeInfo: "9" },
-  },
-  "10": {
-    intent: "None",
-    entities: { timeInfo: "10" },
-  },
-  "11": {
-    intent: "None",
-    entities: { timeInfo: "11" },
-  },
-  "12": {
-    intent: "None",
-    entities: { timeInfo: "12" },
-  },
+const getEntity = (context: SDSContext, entity: string) => {
+  console.log('nluResult:');
+  console.log(context.nluResult)															
+    const topScoringIntent = context.nluResult.prediction.intents[0];
+    console.log('Top scoring intent:', topScoringIntent);
+    return topScoringIntent.category;
 };
 
-const getEntity = (context: SDSContext, entity: string) => {
-  // lowercase the utterance and remove tailing "."
-  let u = context.recResult[0].utterance.toLowerCase().replace(/.$/g, "");
-  if (u in grammar) {
-    if (entity in grammar[u].entities) {
-      return grammar[u].entities[entity];
-    }
-  }
-  return false;
+const getEntity1 = (context: SDSContext, entity: string) => {
+  console.log('nluResult:');
+  console.log(context.nluResult)															
+    const topScoringEntity = context.nluResult.prediction.entities[0];
+    console.log('Top scoring entity:', topScoringEntity);
+    return topScoringEntity.text;
 };
 
 export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
@@ -175,17 +40,14 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
         RECOGNISED: [
           {
             target: "meet",
-            cond: (context) => !!getEntity(context, "occassion"),
-            actions: assign({
-              occassion: (context) => getEntity(context, "occassion"),
-            }),
-          },
+            cond: (context) => getEntity(context) === "create a meeting",
+},
           {
-			  target: "asking",
-			  cond: (context) => !!getEntity(context, "answer"),
-            actions: assign({
-              answer: (context) => getEntity(context, "answer"),
-            }),
+			  target: "WhoIsX",
+			  cond: (context) => getEntity(context) === "who is X",
+			  actions: assign({person:  
+              (context) => getEntity1(context)
+		  })	  
           },
           {
             target: ".nomatch",
@@ -213,31 +75,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
       entry: say("Okay"),
       on: { ENDSPEECH: "welcome" },
       },
-    asking: {
-      entry: send((context) => ({
-        type: "SPEAK",
-        value: `OK`,
-      })),
-      on: { ENDSPEECH: "WhoIsX" },
-      },
     WhoIsX: {
-      initial: "prompt",
-      on: {
-        RECOGNISED: [
-          { target: ".info",
-            actions: assign({person:  
-              context => {return context.recResult[0].utterance}
-            })
-              
-            },
-          {
-            target: ".nomatch",
-          },
-        ],
-        TIMEOUT: ".prompt",
-      },
-      states: {
-        info: {
           invoke: {
             id: 'getInfo',
             src: (context, event) => kbRequest(context.person),
@@ -265,12 +103,11 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
         failure: {
           entry: send((context) => ({
             type: "SPEAK",
-            value: `Sorry, couln't find anything about them. Try again`
+            value: `Sorry, couldn't find anything about them. Try again`
           })),
-          on: {ENDSPEECH: "prompt"}
+          on: {ENDSPEECH: "WhoIsX"}
         },
         prompt: {
-          entry: say("Who would you like to know about?"),
           on: { ENDSPEECH: "ask" },
         },
         ask: {
@@ -282,8 +119,6 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
           ),
           on: { ENDSPEECH: "ask" },
         },
-      },
-    },
     celebrityQuestion: {
 		id: "celebrityQuestion",
     initial: "prompt",
@@ -291,17 +126,11 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
         RECOGNISED: [
           {
             target: "confirmYes",
-            cond: (context) => !!getEntity(context, "confirmation"),
-            actions: assign({
-              confirmation: (context) => getEntity(context, "confirmation"),
-            }),
+            cond: (context) => getEntity(context) === "confirmation"
           },
            {
             target: "denyNo",
-            cond: (context) => !!getEntity(context, "denial"),
-            actions: assign({
-              denial: (context) => getEntity(context, "denial"),
-            }),
+            cond: (context) => getEntity(context) === "denial"
           },
           {
             target: ".nomatch",
@@ -345,9 +174,9 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
         RECOGNISED: [
           {
             target: "info",
-            cond: (context) => !!getEntity(context, "type"),
+            cond: (context) => getEntity(context) === "create a type",
             actions: assign({
-              type: (context) => getEntity(context, "type"),
+				type: (context) => getEntity1(context, "type"),
             }),
           },
           {
@@ -385,9 +214,9 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
         RECOGNISED: [
           {
             target: "day",
-            cond: (context) => !!getEntity(context, "dayInfo"),
+            cond: (context) => getEntity(context) === "day",
             actions: assign({
-				dayInfo: (context) => getEntity(context, "dayInfo"),
+				dayInfo: (context) => getEntity1(context, "dayInfo"),
             }),
           },
           {
@@ -425,17 +254,11 @@ wholeday: {
         RECOGNISED: [
           {
             target: "wday",
-            cond: (context) => !!getEntity(context, "confirmation"),
-            actions: assign({
-              confirmation: (context) => getEntity(context, "confirmation"),
-            }),
+            cond: (context) => getEntity(context) === "confirmation",
           },
           {
 			  target: "nwday",
-			  cond: (context) => !!getEntity(context, "denial"),
-            actions: assign({
-              denial: (context) => getEntity(context, "denial"),
-            }),
+			  cond: (context) => getEntity(context) === "denial",
           },
           {
             target: ".nomatch",
@@ -479,9 +302,9 @@ wholeday: {
         RECOGNISED: [
           {
             target: "time",
-            cond: (context) => !!getEntity(context, "timeInfo"),
+            cond: (context) => getEntity(context) === "information about time",
             actions: assign({
-              timeInfo: (context) => getEntity(context, "timeInfo"),
+				timeInfo: (context) => getEntity1(context, "dayInfo"),
             }),
           },
           {
@@ -519,17 +342,11 @@ wholeday: {
         RECOGNISED: [
           {
             target: "confirm",
-            cond: (context) => !!getEntity(context, "confirmation"),
-            actions: assign({
-              confirmation: (context) => getEntity(context, "confirmation"),
-            }),
+            cond: (context) => getEntity(context) === "confirmation",
           },
            {
             target: "deny",
-            cond: (context) => !!getEntity(context, "denial"),
-            actions: assign({
-              denial: (context) => getEntity(context, "denial"),
-            }),
+            cond: (context) => getEntity(context) === "denial",
           },
           {
             target: ".nomatch",
