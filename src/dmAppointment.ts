@@ -45,7 +45,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
           {
 			  target: "WhoIsX",
 			  cond: (context) => getEntity(context) === "who is X",
-			  actions: assign({person:  
+			  actions: assign({type:  
               (context) => getEntity1(context)
 		  })	  
           },
@@ -78,7 +78,7 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
     WhoIsX: {
           invoke: {
             id: 'getInfo',
-            src: (context, event) => kbRequest(context.person),
+            src: (context, event) => kbRequest(context.type),
             onDone: [{
               target: 'success',
               cond: (context, event) => event.data.Abstract !== "",
@@ -358,7 +358,7 @@ wholeday: {
         prompt: {
 			entry: send((context) => ({
             type: "SPEAK",
-            value: `Do you want me to create a meeting on ${context.dayInfo} at ${context.timeInfo}?`,
+            value: `Do you want me to create a meeting titled ${context.type} on ${context.dayInfo} at ${context.timeInfo}?`,
           })),
           on: { ENDSPEECH: "ask" },
         },
@@ -414,7 +414,7 @@ wholeday: {
         prompt: {
 			entry: send((context) => ({
             type: "SPEAK",
-            value: `Do you want me to create a meeting on ${context.dayInfo} for the whole day?`,
+            value: `Do you want me to create a meeting titled ${context.type} on ${context.dayInfo} for the whole day?`,
           })),
           on: { ENDSPEECH: "ask" },
         },
