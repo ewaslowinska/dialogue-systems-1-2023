@@ -5,6 +5,7 @@ declare module "web-speech-cognitive-services/lib/SpeechServices/TextToSpeech";
 declare module "web-speech-cognitive-services/lib/SpeechServices/SpeechToText";
 
 interface Hypothesis {
+  toLowerCase(): unknown;
   utterance: string;
   confidence: number;
 }
@@ -35,6 +36,20 @@ interface ChatInput {
 }
 
 interface SDSContext {
+  count: number;
+  count1: number;
+  count2: number;
+  count3: number;
+  count4: number;
+  count5: number;
+  count6: number;
+  count7: number;
+  count8: number;
+  p: any;
+  occassion: string;
+  info: any;
+  dayInfo: any;
+  timeInfo: any;
   parameters: Parameters;
   asr: SpeechRecognition;
   tts: SpeechSynthesis;
@@ -45,26 +60,20 @@ interface SDSContext {
   ttsAgenda: string;
   azureAuthorizationToken: string;
   audioCtx: any;
-
-<<<<<<< HEAD
+  
   type: any;
   dayInfo any;
   confirmation any;
   denial any;
   timeInfo any;
-||||||| 7edb337
-  title: any;
-<<<<<<< HEAD
-=======
   title: any;
   topic: string;
->>>>>>> origin/azure-nlu
-||||||| 7edb337
-=======
-  topic: string;
->>>>>>> origin/azure-nlu
+  count: number;
 }
 
+interface SDSState {
+context: any
+}
 type SDSEvent =
   | { type: "TTS_READY" }
   | { type: "TTS_ERROR" }
