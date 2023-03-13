@@ -991,7 +991,7 @@ states: {
     info: {
       entry: send((context) => ({
         type: "SPEAK",
-        value: `OK, ${context.type}`,
+        value: `OK`,
       })),
       on: { ENDSPEECH: "whatday" },
     },
@@ -1187,7 +1187,7 @@ states: {
     day: {
       entry: send((context) => ({
         type: "SPEAK",
-        value: `OK, ${context.dayInfo}`,
+        value: `OK`,
       })),
       on: { ENDSPEECH: "wholeday" },
     },
