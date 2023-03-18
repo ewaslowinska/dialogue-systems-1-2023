@@ -15,7 +15,7 @@ interface Grammar {
 }
 
 const grammar: Grammar = {
-	help: {
+	"help": {
 		intent: "None",
 		entities: { message: "you need help" },
 	},
@@ -154,7 +154,7 @@ const getEntity = (context: SDSContext, entity: string) => {
   let u = context.recResult[0].utterance.toLowerCase().replace(/.$/g, "");
   if (u in grammar) {
     if (entity in grammar[u].entities) {
-      if (context.recResult[0].confidence > 0.85) {
+      if (context.recResult[0].confidence > 0.8) {
       return grammar[u].entities[entity];
     }
     return false
@@ -190,14 +190,22 @@ export const dmMachine: MachineConfig<SDSContext, any, SDSEvent> = {
       },
     },
    greeting: {
+      id: "greeting",
       initial: "prompt",
       on: {
         RECOGNISED: [
+          // {
+          //   target: "helping",
+          //   cond: (context) => !!getEntity1(context, "message"),
+          //   actions: assign({
+          //     message: (context: SDSContext) => getEntity(context, "message"),
+          //   }),
+          // },
           {
-            target: "helping",
-            cond: (context) => !!getEntity(context, "message"),
+            target: "helpingonwelcome",
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
-              message: (context: SDSContext) => getEntity(context, "message"),
+              message: (context) => getEntity1(context, "message"),
             }),
           },
           {
@@ -340,9 +348,11 @@ states: {
         },
       },
     },
-    helping: {
+    helpingonwelcome: {
+    id: "helpingonwelcome",
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "greeting" },
+    // entry: [assign({ count: 0 })],
+		on: { ENDSPEECH: "#greeting.prompt.p1.prompt" },
 	},
     meet: {
       entry: say("Okay"),
@@ -360,8 +370,8 @@ states: {
         on: {
           RECOGNISED: [
             {
-              target: "greeting",
-              cond: (context) => context.recResult[0].utterance === "No.",
+              target: "#greeting.prompt.p1.prompt",
+              cond: (context) => !!getEntity1(context, "denial"),
             },
             {
               target: "meet",
@@ -401,21 +411,28 @@ states: {
     },
   },
     WhoIsX: {
+      id: "WhoIsX",
       initial: "prompt",
       on: {
         RECOGNISED: [
          {
             target: "helping1",
-            cond: (context) => !!getEntity(context, "message"),
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
               message: (context: SDSContext) => getEntity(context, "message"),
             }),
           },
           { target: ".info",
-            actions: assign({type:  
+          cond: (context) => context.recResult[0].confidence > 0.8,
+            actions: assign({p:  
               context => {return context.recResult[0].utterance}
             })
             },
+            {
+              target: "unsureee",
+              cond: (context) => context.recResult[0].confidence <= 0.8,
+              actions: assign({p: (context: { recResult: { utterance: any; }[]; }) => context.recResult[0].utterance}),
+              },
           {
             target: ".nomatch",
           },
@@ -426,7 +443,7 @@ states: {
         info: {
           invoke: {
             id: 'getInfo',
-            src: (context, event) => kbRequest(context.type),
+            src: (context, event) => kbRequest(context.p),
             onDone: [{
               target: 'success',
               cond: (context, event) => event.data.Abstract !== "",
@@ -571,8 +588,49 @@ states: {
       },
     helping1: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "greeting" },
+		on: { ENDSPEECH: "#greeting.prompt.p1.prompt" },
 	},
+  unsureee: {
+    initial: "prompt",
+    on: {
+      RECOGNISED: [
+        {
+          target: "#WhoIsX.prompt.p1.prompt",
+          cond: (context) => !!getEntity1(context, "denial"),
+        },
+        {
+          target: "#WhoIsX.info",
+          cond: (context) => context.recResult[0].utterance === "Yes.",
+        },
+  {
+    target: ".nomatch",
+  },
+],
+TIMEOUT: ".noinput",
+},
+states: {
+noinput: {
+entry: say("Please answer me"),
+on: { ENDSPEECH: "ask" },
+},
+prompt: {
+  entry: send((context) => ({
+    type: "SPEAK",
+    value: `Did you mean ${context.p}?`,
+  })),
+  on: { ENDSPEECH: "ask" },
+},
+ask: {
+  entry: send("LISTEN"),
+},
+nomatch: {
+  entry: say(
+    "Sorry, I don't know what it is. Tell me something I know."
+  ),
+  on: { ENDSPEECH: "ask" },
+},
+},
+},
     celebrityQuestion: {
 		id: "celebrityQuestion",
     initial: "prompt",
@@ -580,7 +638,7 @@ states: {
         RECOGNISED: [
          {
             target: "helping2",
-            cond: (context) => !!getEntity(context, "message"),
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
               message: (context: SDSContext) => getEntity(context, "message"),
             }),
@@ -727,92 +785,36 @@ states: {
     },
     helping: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "greeting" },
+		on: { ENDSPEECH: "#greeting.prompt.p1.prompt" },
 	},
-    meet: {
-      entry: say("Okay"),
-      on: { ENDSPEECH: "welcome" },
-      },
-    asking: {
-      entry: send((context) => ({
-        type: "SPEAK",
-        value: `OK`,
-      })),
-      on: { ENDSPEECH: "WhoIsX" },
-      },
-      unsure: {
-        initial: "prompt",
-        on: {
-          RECOGNISED: [
-            {
-              target: "greeting",
-              cond: (context) => context.recResult[0].utterance === "No.",
-            },
-            {
-              target: "meet",
-              cond: (context) => context.recResult[0].utterance === "Yes." && context.p === "Create a meeting.",
-            },
-            {
-              target: "asking",
-              cond: (context) => context.recResult[0].utterance === "Yes." && context.p === "Ask about someone.",
-            },
-      {
-        target: ".nomatch",
-      },
-    ],
-    TIMEOUT: ".noinput",
-  },
-  states: {
-    noinput: {
-    entry: say("Please answer me"),
-    on: { ENDSPEECH: "ask" },
-  },
-    prompt: {
-      entry: send((context) => ({
-        type: "SPEAK",
-        value: `Did you mean ${context.p}?`,
-      })),
-      on: { ENDSPEECH: "ask" },
-    },
-    ask: {
-      entry: send("LISTEN"),
-    },
-    nomatch: {
-      entry: say(
-        "Sorry, I don't know what it is. Tell me something I know."
-      ),
-      on: { ENDSPEECH: "ask" },
-    },
-    },
-  },
     confirmYes: {
       entry: send((context) => ({
         type: "SPEAK",
         value: `Ok`,
       })),
-      on: { ENDSPEECH: "whatday" },
+      on: { ENDSPEECH: "#whatday.prompt.p1.prompt" },
   },
   denyNo: {
   entry: send((context) => ({
         type: "SPEAK",
         value: `OK`,
       })),
-      on: { ENDSPEECH: "greeting" },
+      on: { ENDSPEECH: "#greeting" },
   },
     helping2: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "WhoIsX" },
+		on: { ENDSPEECH: "#WhoIsX.prompt.p1.prompt" },
 	},
   unsure2: {
     initial: "prompt",
     on: {
       RECOGNISED: [
         {
-          target: "celebrityQuestion",
-          cond: (context) => context.recResult[0].utterance === "No.",
+          target: "#celebrityQuestion.prompt.p1.prompt",
+          cond: (context) => !!getEntity1(context, "denial"),
         },
         {
-          target: "confirmYes",
+          target: "whatday.prompt.p1.prompt",
           cond: (context) => context.recResult[0].utterance === "Yes.",
         },
   {
@@ -844,13 +846,211 @@ nomatch: {
 },
 },
 },
+whatDayCelebrity: {
+  id: "whatDayCelebrity",
+  initial: "prompt",
+  on: {
+    RECOGNISED: [
+     {
+        target: "helpinggg",
+        cond: (context) => !!getEntity1(context, "message"),
+        actions: assign({
+          message: (context: SDSContext) => getEntity(context, "message"),
+        }),
+      },
+      {
+        target: "day1",
+        cond: (context) => !!getEntity(context, "dayInfo"),
+        actions: assign({
+    dayInfo: (context) => getEntity(context, "dayInfo"),
+        }),
+      },
+      {
+        target: "unsure10",
+        cond: (context) => getEntity(context, "message") === false,
+        actions: assign({dayInfo: (context: { recResult: { utterance: any; }[]; }) => context.recResult[0].utterance}),
+        },
+      {
+        target: ".nomatch",
+      },
+    ],
+    TIMEOUT: ".prompt",
+  },
+  states: {
+    noinput: {
+    entry: say("I don't quite hear you"),
+    on: { ENDSPEECH: "prompt" },
+  },
+    prompt: {
+      initial: "choice",
+      states: {
+        choice: {
+          always: [
+            {target: "p2.hist",
+            cond: (context) => context.count4 === 2,
+          },
+          {target: "p3.hist",
+            cond: (context) => context.count4 === 3,
+          },
+          {target: "p4.hist",
+          cond: (context) => context.count4 === 4,
+        },
+        {target: "p5.hist",
+          cond: (context) => context.count4 === 5,
+        },
+          "p1",
+        ],
+          },
+p1: {
+entry: [assign({ count4: 2 })],
+initial: "prompt",
+states: {
+prompt: {
+entry: send({
+  type: "SPEAK",
+  value: "On which day is it?",
+}),
+on: { ENDSPEECH: "ask" },
+},
+ask: {
+entry: send("LISTEN"),
+},
+},
+},
+p2: {
+entry: [assign({ count4: 3 })],
+initial: "prompt",
+states: {
+hist: { type: "history" },
+prompt: {
+entry: send({
+  type: "SPEAK",
+  value: "Please answer me",
+}),
+on: { ENDSPEECH: "ask" },
+},
+ask: {
+entry: send("LISTEN"),
+},
+        },
+      },
+      p3: {
+        entry: [assign({ count4: 4 })],
+        initial: "prompt",
+      states: {
+        hist: { type: "history" },
+        prompt: {
+          entry: send({
+            type: "SPEAK",
+            value: "Answer",
+          }),
+          on: { ENDSPEECH: "ask" },
+},
+ask: {
+entry: send("LISTEN"),
+},
+                  },
+                },
+                p4: {
+                  entry: [assign({ count4: 5 })],
+                  initial: "prompt",
+                states: {
+                  hist: { type: "history" },
+                  prompt: {
+                    entry: send({
+                      type: "SPEAK",
+                      value: "C'mon",
+                    }),
+                    on: { ENDSPEECH: "ask" },
+},
+ask: {
+entry: send("LISTEN"),
+},
+                  },
+                },
+                          p5: {
+                            initial: "prompt",
+                          states: {
+                            hist: { type: "history" },
+                            prompt: {
+                              entry: send({
+                                type: "SPEAK",
+                                value: "Returning to the initial state",
+                              }),
+                              on: { ENDSPEECH: "#initial" },
+                            },
+                                      },
+                                    },
+    },
+  },
+    nomatch: {
+      entry: say(
+        "Sorry, I don't know what it is. Tell me something I know."
+      ),
+      on: { ENDSPEECH: "prompt" },
+    },
+  },
+},
+day1: {
+  entry: send((context) => ({
+    type: "SPEAK",
+    value: `OK, ${context.dayInfo}`,
+  })),
+  on: { ENDSPEECH: "#wholeday.prompt.p1.prompt" },
+},
+helpinggg: {
+entry: say("Returning to the previous question"),
+on: { ENDSPEECH: "#celebrityQuestion.prompt.p1.prompt" },
+},
+unsure10: {
+initial: "prompt",
+on: {
+  RECOGNISED: [
+    {
+      target: "#whatDayCelebrity.prompt.p1.prompt",
+      cond: (context) => !!getEntity1(context, "denial"),
+    },
+    {
+      target: "day1",
+      cond: (context) => context.recResult[0].utterance === "Yes.",
+    },
+{
+target: ".nomatch",
+},
+],
+TIMEOUT: ".noinput",
+},
+states: {
+noinput: {
+entry: say("Please answer me"),
+on: { ENDSPEECH: "ask" },
+},
+prompt: {
+entry: send((context) => ({
+type: "SPEAK",
+value: `Did you mean ${context.dayInfo}?`,
+})),
+on: { ENDSPEECH: "ask" },
+},
+ask: {
+entry: send("LISTEN"),
+},
+nomatch: {
+entry: say(
+"Sorry, I don't know what it is. Tell me something I know."
+),
+on: { ENDSPEECH: "ask" },
+},
+},
+},
  welcome: {
+      id: "welcome",
       initial: "prompt",
       on: {
         RECOGNISED: [
          {
             target: "helping3",
-            cond: (context) => !!getEntity(context, "message"),
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
               message: (context: SDSContext) => getEntity(context, "message"),
             }),
@@ -859,7 +1059,7 @@ nomatch: {
             target: "info",
             cond: (context) => !!getEntity(context, "type"),
             actions: assign({
-              type: (context) => getEntity(context, "type"),
+              p: (context) => getEntity(context, "type"),
             }),
           },
           {
@@ -991,21 +1191,21 @@ states: {
     info: {
       entry: send((context) => ({
         type: "SPEAK",
-        value: `OK`,
+        value: `OK, ${context.p}`,
       })),
       on: { ENDSPEECH: "whatday" },
     },
     helping3: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "greeting" },
+		on: { ENDSPEECH: "#greeting.prompt.p1.prompt" },
 	},
   unsure3: {
     initial: "prompt",
     on: {
       RECOGNISED: [
         {
-          target: "welcome",
-          cond: (context) => context.recResult[0].utterance === "No.",
+          target: "#welcome.prompt.p1.prompt",
+          cond: (context) => !!getEntity1(context, "denial"),
         },
         {
           target: "info",
@@ -1041,12 +1241,13 @@ nomatch: {
 },
 },
     whatday: {
+      id: "whatday",
       initial: "prompt",
       on: {
         RECOGNISED: [
          {
             target: "helping4",
-            cond: (context) => !!getEntity(context, "message"),
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
               message: (context: SDSContext) => getEntity(context, "message"),
             }),
@@ -1061,7 +1262,7 @@ nomatch: {
           {
             target: "unsure4",
             cond: (context) => getEntity(context, "message") === false,
-            actions: assign({p: (context: { recResult: { utterance: any; }[]; }) => context.recResult[0].utterance}),
+            actions: assign({dayInfo: (context: { recResult: { utterance: any; }[]; }) => context.recResult[0].utterance}),
             },
           {
             target: ".nomatch",
@@ -1187,21 +1388,21 @@ states: {
     day: {
       entry: send((context) => ({
         type: "SPEAK",
-        value: `OK`,
+        value: `OK, ${context.dayInfo}`,
       })),
-      on: { ENDSPEECH: "wholeday" },
+      on: { ENDSPEECH: "#wholeday.prompt.p1.prompt" },
     },
     helping4: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "welcome" },
+		on: { ENDSPEECH: "#welcome.prompt.p1.prompt" },
 	},
   unsure4: {
     initial: "prompt",
     on: {
       RECOGNISED: [
         {
-          target: "whatday",
-          cond: (context) => context.recResult[0].utterance === "No.",
+          target: "#whatday.prompt.p1.prompt",
+          cond: (context) => !!getEntity1(context, "denial"),
         },
         {
           target: "day",
@@ -1221,7 +1422,7 @@ on: { ENDSPEECH: "ask" },
 prompt: {
   entry: send((context) => ({
     type: "SPEAK",
-    value: `Did you mean ${context.p}?`,
+    value: `Did you mean ${context.dayInfo}?`,
   })),
   on: { ENDSPEECH: "ask" },
 },
@@ -1237,12 +1438,13 @@ nomatch: {
 },
 },
 wholeday: {
+      id: "wholeday",
       initial: "prompt",
       on: {
         RECOGNISED: [
          {
             target: "helping5",
-            cond: (context) => !!getEntity(context, "message"),
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
               message: (context: SDSContext) => getEntity(context, "message"),
             }),
@@ -1403,15 +1605,15 @@ states: {
   },
     helping5: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "whatday" },
+		on: { ENDSPEECH: "#whatday.prompt.p1.prompt" },
 	},  
   unsure5: {
     initial: "prompt",
     on: {
       RECOGNISED: [
         {
-          target: "wholeday",
-          cond: (context) => context.recResult[0].utterance === "No.",
+          target: "#wholeday.prompt.p1.prompt",
+          cond: (context) => !!getEntity1(context, "denial"),
         },
         {
           target: "wday",
@@ -1451,12 +1653,13 @@ nomatch: {
 },
 },
   whattime: {
+      id: "whattime",
       initial: "prompt",
       on: {
         RECOGNISED: [
          {
             target: "helping6",
-            cond: (context) => !!getEntity(context, "message"),
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
               message: (context: SDSContext) => getEntity(context, "message"),
             }),
@@ -1471,7 +1674,7 @@ nomatch: {
           {
             target: "unsure6",
             cond: (context) => getEntity(context, "message") === false,
-            actions: assign({p: (context: { recResult: { utterance: any; }[]; }) => context.recResult[0].utterance}),
+            actions: assign({timeInfo: (context: { recResult: { utterance: any; }[]; }) => context.recResult[0].utterance}),
             },
           {
             target: ".nomatch",
@@ -1597,21 +1800,21 @@ states: {
     time: {
       entry: send((context) => ({
         type: "SPEAK",
-        value: `OK`,
+        value: `OK, ${context.timeInfo}`,
       })),
       on: { ENDSPEECH: "nwsum" },
   },
     helping6: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "wholeday" },
+		on: { ENDSPEECH: "#wholeday.prompt.p1.prompt" },
 	},
   unsure6: {
     initial: "prompt",
     on: {
       RECOGNISED: [
         {
-          target: "whattime",
-          cond: (context) => context.recResult[0].utterance === "No.",
+          target: "#whattime.prompt.p1.prompt",
+          cond: (context) => !!getEntity1(context, "denial"),
         },
         {
           target: "nwsum",
@@ -1648,11 +1851,12 @@ nomatch: {
 },
   nwsum: {
       initial: "prompt",
+      id: "nwsum",
       on: {
         RECOGNISED: [
          {
             target: "helping7",
-            cond: (context) => !!getEntity(context, "message"),
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
               message: (context: SDSContext) => getEntity(context, "message"),
             }),
@@ -1712,10 +1916,10 @@ p1: {
 initial: "prompt",
 states: {
   prompt: {
-    entry: send({
+    entry: send((context) => ({
       type: "SPEAK",
-      value: `Would you like to create the meeting?`,
-    }),
+      value: `Would you like to create a meeting titled ${context.p} on ${context.dayInfo} at ${context.timeInfo}?`,
+    })),
     on: { ENDSPEECH: "ask" },
   },
   ask: {
@@ -1808,19 +2012,19 @@ states: {
         type: "SPEAK",
         value: `OK`,
       })),
-      on: { ENDSPEECH: "welcome" },
+      on: { ENDSPEECH: "#greeting.prompt.p1.prompt" },
   },
     helping7: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "whattime" },
+		on: { ENDSPEECH: "#whattime.prompt.p1.prompt" },
 	},
   unsure7: {
     initial: "prompt",
     on: {
       RECOGNISED: [
         {
-          target: "nwsum",
-          cond: (context) => context.recResult[0].utterance === "No.",
+          target: "#nwsum.prompt.p1.prompt",
+          cond: (context) => !!getEntity1(context, "denial"),
         },
         {
           target: "confirm",
@@ -1865,7 +2069,7 @@ nomatch: {
         RECOGNISED: [
          {
             target: "helping8",
-            cond: (context) => !!getEntity(context, "message"),
+            cond: (context) => !!getEntity1(context, "message"),
             actions: assign({
               message: (context: SDSContext) => getEntity(context, "message"),
             }),
@@ -1925,10 +2129,10 @@ p1: {
 initial: "prompt",
 states: {
   prompt: {
-    entry: send({
+    entry: send((context) => ({
       type: "SPEAK",
-      value: `Would you like to create the meeting?`,
-    }),
+      value: `Would you like to create a meeting titled ${context.p} on ${context.dayInfo} for the whole day?`,
+    })),
     on: { ENDSPEECH: "ask" },
   },
   ask: {
@@ -2021,19 +2225,19 @@ states: {
         type: "SPEAK",
         value: `OK`,
       })),
-      on: { ENDSPEECH: "welcome" },
+      on: { ENDSPEECH: "#greeting.prompt.p1.prompt" },
   },
     helping8: {
 		entry: say("Returning to the previous question"),
-		on: { ENDSPEECH: "wholeday" },
+		on: { ENDSPEECH: "#wholeday.prompt.p1.prompt" },
 	},
   unsure8: {
     initial: "prompt",
     on: {
       RECOGNISED: [
         {
-          target: "nwsum",
-          cond: (context) => context.recResult[0].utterance === "No.",
+          target: "#nwsum.prompt.p1.prompt",
+          cond: (context) => !!getEntity1(context, "denial"),
         },
         {
           target: "confirm",
