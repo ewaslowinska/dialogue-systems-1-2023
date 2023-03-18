@@ -1,0 +1,67 @@
+// If I were to implement confidence threshold for NLU, I would have to edit my getEntity function, because the name for confidence score
+// is different depending of whether you use grammar or NLU services. It would then look like that:
+
+const getEntity = (context: SDSContext, entity: string) => {
+  // lowercase the utterance and remove tailing "."
+  let u = context.recResult[0].utterance.toLowerCase().replace(/.$/g, "");
+  if (context.nluResult.prediction.intents[0].confidenceScore > 0.8) {
+  return u
+    }
+    return false
+}
+
+// Then, in RECOGNISED, I would have to enter the following piece of code:
+
+{
+target: "unsure",
+cond: (context) => getEntity(context, "message") === false,
+actions: assign({p: (context: { recResult: { utterance: any; }[]; }) => context.recResult[0].utterance}),
+}
+
+// The state "unsure" would look like that:
+
+unsure: {
+        initial: "prompt",
+        on: {
+          RECOGNISED: [
+            {
+              target: "#greeting.prompt.p1.prompt",
+              cond: (context) => !!getEntity1(context, "denial"),
+            },
+            {
+              target: "meet",
+              cond: (context) => context.nluResult[0].utterance === "Yes." && context.p === "Create a meeting.",
+            },
+            {
+              target: "asking",
+              cond: (context) => context.recResult[0].utterance === "Yes." && context.p === "Ask about someone.",
+            },
+      {
+        target: ".nomatch",
+      },
+    ],
+    TIMEOUT: ".noinput",
+  },
+  states: {
+    noinput: {
+    entry: say("Please answer me"),
+    on: { ENDSPEECH: "ask" },
+  },
+    prompt: {
+      entry: send((context) => ({
+        type: "SPEAK",
+        value: `Did you mean ${context.p}?`,
+      })),
+      on: { ENDSPEECH: "ask" },
+    },
+    ask: {
+      entry: send("LISTEN"),
+    },
+    nomatch: {
+      entry: say(
+        "Sorry, I don't know what it is. Tell me something I know."
+      ),
+      on: { ENDSPEECH: "ask" },
+    },
+    },
+  }
